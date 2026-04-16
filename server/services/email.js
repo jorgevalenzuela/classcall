@@ -17,6 +17,10 @@ const transporter = nodemailer.createTransport({
  * @param {string} code     - 6-digit numeric string
  */
 export async function sendLoginCode(toEmail, code) {
+  if (!process.env.EMAIL_HOST) {
+    console.log(`[DEV MODE] Login code for ${toEmail}: ${code}`)
+    return
+  }
   await transporter.sendMail({
     from:    process.env.SMTP_FROM,
     to:      toEmail,
