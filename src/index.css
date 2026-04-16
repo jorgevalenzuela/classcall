@@ -262,18 +262,33 @@ code   { font-family: 'SF Mono', Menlo, monospace; font-size: 0.85em; }
   font-size: 0.8rem;
 }
 
+.chip-group { margin-bottom: 0.75rem; }
+
+.chip-group-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gray-400);
+  margin-bottom: 0.35rem;
+}
+
 .chip-grid {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 148px);
   gap: 0.5rem;
 }
 
 .chip {
+  width: 148px;
   padding: 0.3rem 0.75rem;
   border-radius: 20px;
   font-size: 0.8rem;
   font-weight: 500;
   border: 1.5px solid transparent;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .chip-pool {

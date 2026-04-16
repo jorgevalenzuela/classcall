@@ -88,5 +88,5 @@ export function parseCSV(text) {
     })
   }
 
-  return students
+  return students.sort((a, b) => a.name.localeCompare(b.name))
 }

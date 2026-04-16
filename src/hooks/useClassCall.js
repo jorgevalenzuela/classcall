@@ -37,8 +37,12 @@ function saveLS(key, value) {
   } catch { /* quota exceeded — silently ignore */ }
 }
 
+function sortByName(arr) {
+  return arr.slice().sort((a, b) => a.name.localeCompare(b.name))
+}
+
 export function useClassCall() {
-  const [roster,   setRosterRaw]   = useState(() => loadLS(KEYS.roster,   []))
+  const [roster,   setRosterRaw]   = useState(() => sortByName(loadLS(KEYS.roster, [])))
   const [grades,   setGradesRaw]   = useState(() => loadLS(KEYS.grades,   {}))
   const [pool,     setPoolRaw]     = useState(() => loadLS(KEYS.pool,     []))
   const [called,   setCalledRaw]   = useState(() => loadLS(KEYS.called,   []))
@@ -60,7 +64,7 @@ export function useClassCall() {
   // ── Roster ───────────────────────────────────────────────────────────────────
   /** Replace roster, reset pool to all students, clear session and grades. */
   const loadRoster = useCallback((students) => {
-    setRosterRaw(students)
+    setRosterRaw(sortByName(students))
     setGradesRaw({})
     setPoolRaw(students.map(s => s.id))
     setCalledRaw([])

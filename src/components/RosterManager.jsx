@@ -9,6 +9,20 @@
 import { useRef } from 'react'
 import { parseCSV } from '../utils/csvParser'
 
+function groupByLetter(students) {
+  const groups = []
+  let current = null
+  for (const s of students) {
+    const letter = s.name[0]?.toUpperCase() || '#'
+    if (letter !== current) {
+      current = letter
+      groups.push({ letter, students: [] })
+    }
+    groups[groups.length - 1].students.push(s)
+  }
+  return groups
+}
+
 export default function RosterManager({ roster, pool, called, loadRoster }) {
   const fileRef = useRef(null)
 
@@ -86,21 +100,26 @@ export default function RosterManager({ roster, pool, called, loadRoster }) {
             <span className="chip chip-pool">● In pool</span>
             <span className="chip chip-called">● Called</span>
           </div>
-          <div className="chip-grid">
-            {roster.map(student => {
-              const isCalled = calledSet.has(student.id)
-              return (
-                <div
-                  key={student.id}
-                  className={`chip ${isCalled ? 'chip-called' : 'chip-pool'}`}
-                  title={isCalled ? 'Called this session' : 'In pool'}
-                >
-                  {student.name}
-                  {isCalled && <span className="chip-check"> ✓</span>}
-                </div>
-              )
-            })}
-          </div>
+          {groupByLetter(roster).map(({ letter, students }) => (
+            <div key={letter} className="chip-group">
+              <div className="chip-group-label">{letter}</div>
+              <div className="chip-grid">
+                {students.map(student => {
+                  const isCalled = calledSet.has(student.id)
+                  return (
+                    <div
+                      key={student.id}
+                      className={`chip ${isCalled ? 'chip-called' : 'chip-pool'}`}
+                      title={student.name}
+                    >
+                      {student.name}
+                      {isCalled && <span className="chip-check"> ✓</span>}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
           <div style={{ marginTop: '1rem' }}>
             <button
               className="btn btn-ghost"
