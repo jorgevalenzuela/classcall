@@ -1,10 +1,10 @@
 /**
- * Leaderboard — sorted bar chart, named/anonymous toggle (FR-07, FR-10).
+ * Leaderboard — alias + avatar mode, tied ranks (FR-07, FR-10).
  *
- * • Sorted descending by % score (avg / 5 × 100)
- * • Anonymous mode: names replaced with "Student 1", "Student 2", …
- * • Student-facing: always visible regardless of instructorMode
- * • Students with no grades appear at the bottom as "—"
+ * • Student-facing: shows display_avatar + display_alias (or "Student N" fallback)
+ * • Instructor-facing: shows real first_name + last_name
+ * • Ties: same score = same rank; next rank skips (1, 2, 2, 4)
+ * • Sort: score DESC, then alias/name ASC for tie-breaking display
  */
 
 import { LIKERT_COLORS } from '../utils/scoring'
@@ -18,9 +18,38 @@ function scoreColor(pct) {
   return LIKERT_COLORS[1]
 }
 
-export default function Leaderboard({ roster, settings, getLeaderboard, setLbMode }) {
-  const entries = getLeaderboard()
-  const anonymous = settings.lbMode === 'anonymous'
+function rankMedal(rank) {
+  if (rank === 1) return '🥇'
+  if (rank === 2) return '🥈'
+  if (rank === 3) return '🥉'
+  return `#${rank}`
+}
+
+function assignRanks(entries) {
+  const ranked = []
+  let currentRank = 1
+  for (let i = 0; i < entries.length; i++) {
+    if (i === 0 || entries[i].pct !== entries[i - 1].pct) {
+      currentRank = i + 1
+    }
+    ranked.push({ ...entries[i], rank: entries[i].pct !== null ? currentRank : null })
+  }
+  return ranked
+}
+
+export default function Leaderboard({ roster, settings, getLeaderboard, setLbMode, instructorMode }) {
+  const rawEntries = getLeaderboard()
+  const aliasMode  = settings.lbMode === 'anonymous'
+
+  // Secondary sort: score DESC already from getLeaderboard; tie-break by display name ASC
+  const sorted = rawEntries.slice().sort((a, b) => {
+    if (a.pct !== b.pct) return (b.pct ?? -1) - (a.pct ?? -1)
+    const nameA = aliasMode ? (a.alias || a.name) : a.name
+    const nameB = aliasMode ? (b.alias || b.name) : b.name
+    return nameA.localeCompare(nameB)
+  })
+
+  const entries = assignRanks(sorted)
 
   return (
     <div className="panel">
@@ -30,13 +59,11 @@ export default function Leaderboard({ roster, settings, getLeaderboard, setLbMod
           <p className="panel-sub">Sorted by average score · student-facing</p>
         </div>
         <button
-          className={`btn ${anonymous ? 'btn-active' : 'btn-secondary'}`}
-          onClick={() =>
-            setLbMode(anonymous ? 'named' : 'anonymous')
-          }
-          title="Toggle named/anonymous"
+          className={`btn ${aliasMode ? 'btn-active' : 'btn-secondary'}`}
+          onClick={() => setLbMode(aliasMode ? 'named' : 'anonymous')}
+          title="Toggle alias/named mode"
         >
-          {anonymous ? '👤 Anonymous' : '🏷️ Named'}
+          {aliasMode ? '👤 Alias' : '🏷️ Named'}
         </button>
       </div>
 
@@ -50,18 +77,20 @@ export default function Leaderboard({ roster, settings, getLeaderboard, setLbMod
 
       {entries.length > 0 && (
         <div className="lb-list">
-          {entries.map((entry, i) => {
-            const displayName = anonymous ? `Student ${i + 1}` : entry.name
-            const color = scoreColor(entry.pct)
+          {entries.map(entry => {
+            // Student-facing: avatar + alias. Instructor-facing: real name.
+            const displayName = aliasMode && !instructorMode
+              ? `${entry.avatar ? entry.avatar + ' ' : ''}${entry.alias || entry.name}`
+              : entry.name
+
+            const color    = scoreColor(entry.pct)
             const barWidth = entry.pct !== null ? `${entry.pct}%` : '0%'
+            const rank     = entry.rank
 
             return (
               <div key={entry.id} className="lb-row">
                 <span className="lb-rank">
-                  {i === 0 && entry.pct !== null ? '🥇' :
-                   i === 1 && entry.pct !== null ? '🥈' :
-                   i === 2 && entry.pct !== null ? '🥉' :
-                   `#${i + 1}`}
+                  {rank !== null ? rankMedal(rank) : '—'}
                 </span>
 
                 <div className="lb-info">
@@ -82,10 +111,7 @@ export default function Leaderboard({ roster, settings, getLeaderboard, setLbMod
                   </div>
                 </div>
 
-                <span
-                  className="lb-score"
-                  style={{ color }}
-                >
+                <span className="lb-score" style={{ color }}>
                   {entry.pct !== null ? `${entry.pct}%` : '—'}
                 </span>
               </div>
@@ -96,8 +122,8 @@ export default function Leaderboard({ roster, settings, getLeaderboard, setLbMod
 
       {entries.length > 0 && (
         <p className="lb-legend">
-          Score = average Likert (1–5) expressed as % of maximum.
-          {anonymous && ' Names hidden — toggle above to show.'}
+          Score = average (0–5) expressed as % of maximum.
+          {aliasMode && !instructorMode && ' Aliases shown — instructor can toggle to real names.'}
         </p>
       )}
     </div>

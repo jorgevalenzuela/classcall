@@ -1,18 +1,30 @@
 /**
  * GradePanel — instructor-only grade history + re-grade interface (FR-05, FR-10).
  *
+ * Score input: continuous 0.0–5.0 slider (step 0.1) via @radix-ui/react-slider.
  * This tab is hidden from students (controlled by App.jsx instructorMode).
- * Shows: currently selected student (if any) with grade buttons,
- *        followed by the full session grade history.
  */
 
-import { LIKERT_LABELS, LIKERT_COLORS, getAvgScore } from '../utils/scoring'
+import { useState } from 'react'
+import * as Slider from '@radix-ui/react-slider'
+import { LIKERT_COLORS, getAvgScore } from '../utils/scoring'
 
 function fmt(ts) {
   return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
-export default function GradePanel({ roster, grades, history, selected, recordGrade, skipGrade }) {
+function sliderColor(value) {
+  if (value >= 4.5) return LIKERT_COLORS[5]
+  if (value >= 3.5) return LIKERT_COLORS[4]
+  if (value >= 2.5) return LIKERT_COLORS[3]
+  if (value >= 1.5) return LIKERT_COLORS[2]
+  return LIKERT_COLORS[1]
+}
+
+export default function GradePanel({ roster, grades, history, selected, recordGrade }) {
+  const [sliderValue, setSliderValue] = useState(3.0)
+  const color = sliderColor(sliderValue)
+
   return (
     <div className="panel">
       <div className="panel-header">
@@ -30,22 +42,30 @@ export default function GradePanel({ roster, grades, history, selected, recordGr
             {selected.type === 'volunteer' ? '🙋 Volunteer' : '🎲 Random'} — grade now:
           </p>
           <p className="grade-card-name">{selected.name}</p>
-          <div className="likert-row">
-            {[1, 2, 3, 4, 5].map(score => (
-              <button
-                key={score}
-                className="likert-btn"
-                style={{ '--likert-color': LIKERT_COLORS[score] }}
-                onClick={() => recordGrade(selected.id, score)}
-                title={LIKERT_LABELS[score]}
-              >
-                <span className="likert-num">{score}</span>
-                <span className="likert-lbl">{LIKERT_LABELS[score]}</span>
-              </button>
-            ))}
+
+          <div className="slider-wrap">
+            <Slider.Root
+              className="slider-root"
+              min={0}
+              max={5}
+              step={0.1}
+              value={[sliderValue]}
+              onValueChange={([v]) => setSliderValue(v)}
+            >
+              <Slider.Track className="slider-track">
+                <Slider.Range className="slider-range" style={{ backgroundColor: color }} />
+              </Slider.Track>
+              <Slider.Thumb className="slider-thumb" style={{ borderColor: color }} />
+            </Slider.Root>
+            <span className="slider-readout" style={{ color }}>{sliderValue.toFixed(1)}</span>
           </div>
-          <button className="btn btn-ghost" onClick={skipGrade}>
-            Skip — no grade
+
+          <button
+            className="btn btn-primary"
+            style={{ marginTop: '0.75rem' }}
+            onClick={() => { recordGrade(selected.id, sliderValue); setSliderValue(3.0) }}
+          >
+            Record {sliderValue.toFixed(1)}
           </button>
         </div>
       ) : (
@@ -67,8 +87,8 @@ export default function GradePanel({ roster, grades, history, selected, recordGr
                   <span className="gs-name">{student.name}</span>
                   <span className="gs-count">{g.length} grade{g.length !== 1 ? 's' : ''}</span>
                   {avg !== null ? (
-                    <span className="gs-avg" style={{ color: LIKERT_COLORS[Math.round(avg)] }}>
-                      {avg.toFixed(1)} — {LIKERT_LABELS[Math.round(avg)]}
+                    <span className="gs-avg" style={{ color: sliderColor(avg) }}>
+                      {avg.toFixed(1)}
                     </span>
                   ) : (
                     <span className="gs-avg gs-none">—</span>
@@ -94,9 +114,9 @@ export default function GradePanel({ roster, grades, history, selected, recordGr
                 <span className="hist-name">{entry.name}</span>
                 <span
                   className="hist-score"
-                  style={{ color: LIKERT_COLORS[entry.score] }}
+                  style={{ color: sliderColor(entry.score) }}
                 >
-                  {entry.score} — {LIKERT_LABELS[entry.score]}
+                  {typeof entry.score === 'number' ? entry.score.toFixed(1) : entry.score}
                 </span>
               </div>
             ))}
