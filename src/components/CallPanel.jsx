@@ -9,10 +9,11 @@
 
 import { useEffect, useRef } from 'react'
 import { LIKERT_LABELS, LIKERT_COLORS } from '../utils/scoring'
+import { formatVolunteerName } from '../hooks/useClassCall'
 
 export default function CallPanel({
   roster, pool, called, selected, volunteerMode, settings,
-  pickRandom, callVolunteer, recordGrade, skipGrade, setVolunteerMode,
+  pickRandom, callVolunteer, recordGrade, skipGrade, skipStudent, setVolunteerMode,
   instructorMode,
 }) {
   // Re-key the selected div on each new selection to re-trigger animation
@@ -64,7 +65,11 @@ export default function CallPanel({
           <div className={`selected-type ${selected.type === 'volunteer' ? 'type-volunteer' : 'type-random'}`}>
             {selected.type === 'volunteer' ? '🙋 Volunteer' : '🎲 Random Pick'}
           </div>
-          <div className="selected-name">{selected.name}</div>
+          <div className="selected-name">
+            {selected.type === 'volunteer'
+              ? formatVolunteerName(selected.name)
+              : selected.name}
+          </div>
 
           {/* Instructor: grade inline */}
           {instructorMode && (
@@ -87,6 +92,11 @@ export default function CallPanel({
               <button className="btn btn-ghost" onClick={skipGrade}>
                 Skip — no grade
               </button>
+              {selected.type === 'random' && (
+                <button className="btn btn-ghost" onClick={skipStudent}>
+                  Skip
+                </button>
+              )}
             </div>
           )}
 

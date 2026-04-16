@@ -262,20 +262,32 @@ code   { font-family: 'SF Mono', Menlo, monospace; font-size: 0.85em; }
   font-size: 0.8rem;
 }
 
-.chip-group { margin-bottom: 0.75rem; }
-
-.chip-group-label {
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--gray-400);
-  margin-bottom: 0.35rem;
+.alpha-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 10px;
 }
 
+.alpha-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--gray-400);
+  min-width: 16px;
+  padding-top: 8px;
+}
+
+.roster-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: 1;
+}
+
+/* chip-grid — used by volunteer picker in CallPanel */
 .chip-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, 148px);
+  display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
 }
 

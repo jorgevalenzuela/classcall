@@ -41,6 +41,14 @@ function sortByName(arr) {
   return arr.slice().sort((a, b) => a.name.localeCompare(b.name))
 }
 
+export function formatVolunteerName(fullName) {
+  const parts = fullName.trim().split(' ')
+  if (parts.length === 1) return parts[0]
+  const first = parts[0]
+  const lastInitial = parts[parts.length - 1][0].toUpperCase()
+  return `${first} ${lastInitial}.`
+}
+
 export function useClassCall() {
   const [roster,   setRosterRaw]   = useState(() => sortByName(loadLS(KEYS.roster, [])))
   const [grades,   setGradesRaw]   = useState(() => loadLS(KEYS.grades,   {}))
@@ -128,6 +136,14 @@ export function useClassCall() {
     setSelected(null)
   }, [])
 
+  /** Return selected student to pool silently — no grade, no history entry. */
+  const skipStudent = useCallback(() => {
+    if (!selected) return
+    setPoolRaw(prev => [...prev, selected.id])
+    setCalledRaw(prev => prev.filter(id => id !== selected.id))
+    setSelected(null)
+  }, [selected])
+
   // ── Pool management ──────────────────────────────────────────────────────────
   const resetPool = useCallback(() => {
     setPoolRaw(roster.map(s => s.id))
@@ -198,6 +214,7 @@ export function useClassCall() {
     // Additional actions used by components
     callVolunteer,
     skipGrade,
+    skipStudent,
     updateSettings,
     clearGrades,
     setVolunteerMode,

@@ -101,9 +101,9 @@ export default function RosterManager({ roster, pool, called, loadRoster }) {
             <span className="chip chip-called">● Called</span>
           </div>
           {groupByLetter(roster).map(({ letter, students }) => (
-            <div key={letter} className="chip-group">
-              <div className="chip-group-label">{letter}</div>
-              <div className="chip-grid">
+            <div key={letter} className="alpha-row">
+              <span className="alpha-label">{letter}</span>
+              <div className="roster-grid">
                 {students.map(student => {
                   const isCalled = calledSet.has(student.id)
                   return (
