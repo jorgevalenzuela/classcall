@@ -139,3 +139,20 @@
 **AI suggested?** Human-decided
 
 **Consequences:** More nuanced grading. Leaderboard rank calculation must handle ties explicitly (same score → same rank, next rank skips). Legacy localStorage grades (integers 1–5) remain compatible since they fall within the new range.
+
+---
+
+## D-013 · Instructor role stored in database, not hardcoded
+
+**Status:** Accepted
+**Date:** 2026-04-16
+
+**Context:** The initial v2 design derived instructor role from the absence of a student record — any unrecognized email became an instructor. This is insecure and doesn't support TAs or co-instructors.
+
+**Decision:** An `instructors` table stores instructor and TA accounts with a `role` field (`'instructor'` | `'ta'`). The `verify-code` endpoint checks this table first; only known emails are granted a role. Accounts are seeded via `node server/db/seed.js`. The option of hardcoding email in `.env` (Option A) was rejected as non-scalable.
+
+**Alternatives considered:** Option A — hardcoded `INSTRUCTOR_EMAIL` in `.env` (simpler, single instructor only)
+
+**AI suggested?** Human-decided (Option B), AI designed implementation
+
+**Outcome:** Pending

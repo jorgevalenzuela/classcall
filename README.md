@@ -15,7 +15,15 @@ A lightweight classroom cold-call tool for instructors. Upload your class roster
 | **Pool modes** | *Session reset* (manual) or *Round-robin* (auto-refills when exhausted) |
 | **Privacy-first** | All data stays in your browser's localStorage; no accounts, no cloud |
 
-## Quick start
+## First-time setup (v2 backend)
+
+1. Copy `.env.example` to `.env` and fill in all values
+2. Run `psql -f server/db/schema.sql` to create tables
+3. Run `node server/db/seed.js` to seed the instructor account
+4. Start the API: `npm run server:dev`
+5. Start the frontend: `npm run dev`
+
+## Quick start (v1 localStorage mode)
 
 ```bash
 npm install

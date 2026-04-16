@@ -36,8 +36,7 @@ router.post('/request-code', async (req, res) => {
  * POST /api/auth/verify-code
  * Body: { email, code }
  * Validates the code, marks it used, returns a signed JWT.
- * Role is determined by whether the email matches an instructor account
- * (for v2: any student in the students table → role 'student'; otherwise 'instructor').
+ * Role resolution: instructors table first, then students, then 403.
  */
 router.post('/verify-code', async (req, res) => {
   const { email, code } = req.body
@@ -65,29 +64,35 @@ router.post('/verify-code', async (req, res) => {
   // Mark code used
   await pool.query(`UPDATE auth_codes SET used = TRUE WHERE id = $1`, [rows[0].id])
 
-  // Resolve student identity
-  const { rows: students } = await pool.query(
-    `SELECT id, class_id, alias_set FROM students WHERE email_hash = $1 LIMIT 1`,
-    [emailHash]
+  // Check instructors table first
+  const instructor = await pool.query(
+    `SELECT id FROM instructors WHERE email_hash = $1`, [emailHash]
   )
 
-  let role = 'instructor'
-  let sub  = emailHash
-  let extra = {}
-
-  if (students.length > 0) {
-    role  = 'student'
-    sub   = students[0].id
-    extra = { class_id: students[0].class_id, alias_set: students[0].alias_set }
+  if (instructor.rows.length) {
+    const token = jwt.sign(
+      { id: instructor.rows[0].id, role: 'instructor' },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN || '8h' }
+    )
+    return res.json({ token, role: 'instructor' })
   }
 
-  const token = jwt.sign(
-    { sub, role, email_hash: emailHash, ...extra },
-    process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRES_IN || '8h' }
+  // Check students table
+  const student = await pool.query(
+    `SELECT id, class_id, alias_set FROM students WHERE email_hash = $1`, [emailHash]
   )
 
-  res.json({ token, role })
+  if (student.rows.length) {
+    const token = jwt.sign(
+      { id: student.rows[0].id, role: 'student', classId: student.rows[0].class_id, aliasSet: student.rows[0].alias_set },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN || '8h' }
+    )
+    return res.json({ token, role: 'student', aliasSet: student.rows[0].alias_set })
+  }
+
+  return res.status(403).json({ error: 'Email not recognized' })
 })
 
 export default router

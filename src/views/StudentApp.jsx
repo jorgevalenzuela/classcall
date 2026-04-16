@@ -12,6 +12,7 @@
 
 import { useState, useEffect } from 'react'
 import { useStudent } from '../hooks/useStudent'
+import InstructorApp from './InstructorApp'
 
 const AVATARS = ['🐶','🐱','🐸','🦊','🐼','🐻','🐨','🦁','🐯','🐺','🦋','🐙']
 
@@ -21,7 +22,7 @@ function LoginView({ onRequestCode, loading, error }) {
   const [email, setEmail] = useState('')
   return (
     <div className="student-card">
-      <h2 className="panel-title">Student Login</h2>
+      <h2 className="panel-title">ClassCall Login</h2>
       <p className="panel-sub">Enter your school email to receive a login code.</p>
       <input
         className="text-input"
@@ -288,13 +289,14 @@ export default function StudentApp() {
   const [view,  setView]  = useState('login')   // login | verify | setup | app
   const [email, setEmail] = useState('')
   const [tab,   setTab]   = useState('dashboard')
+  const [role,  setRole]  = useState(null)
 
-  // Determine initial view after login
+  // Determine initial view after login (student path)
   useEffect(() => {
-    if (isLoggedIn && profile) {
+    if (isLoggedIn && profile && role === 'student') {
       setView(profile.alias_set ? 'app' : 'setup')
     }
-  }, [isLoggedIn, profile])
+  }, [isLoggedIn, profile, role])
 
   async function handleRequestCode(em) {
     await requestCode(em)
@@ -303,14 +305,18 @@ export default function StudentApp() {
   }
 
   async function handleVerify(code) {
-    await verifyCode(email, code)
-    // profile load triggered in useStudent; view updated by useEffect above
+    const { role: resolvedRole } = await verifyCode(email, code)
+    setRole(resolvedRole)
+    if (resolvedRole === 'instructor') setView('instructor')
+    // student path: useEffect above handles view transition once profile loads
   }
 
   async function handleSetup(patch) {
     await updateProfile(patch)
     setView('app')
   }
+
+  if (view === 'instructor') return <InstructorApp />
 
   if (!isLoggedIn || view === 'login') {
     return <LoginView onRequestCode={handleRequestCode} loading={loading} error={error} />

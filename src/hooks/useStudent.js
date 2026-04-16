@@ -61,10 +61,9 @@ export function useStudent() {
         method: 'POST',
         body: JSON.stringify({ email, code }),
       })
-      if (role !== 'student') throw new Error('This login is for students only')
       storeToken(jwt)
       setToken(jwt)
-      return jwt
+      return { role }
     } catch (e) {
       setError(e.message)
       throw e

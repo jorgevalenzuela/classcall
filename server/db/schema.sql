@@ -61,6 +61,16 @@ CREATE TABLE grades (
   created_at  TIMESTAMP DEFAULT NOW()
 );
 
+CREATE TABLE instructors (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  first_name      VARCHAR(50) NOT NULL,
+  last_name       VARCHAR(50) NOT NULL,
+  email_hash      VARCHAR(64) NOT NULL UNIQUE,
+  email_encrypted TEXT NOT NULL,
+  role            VARCHAR(20) DEFAULT 'instructor', -- 'instructor' | 'ta'
+  created_at      TIMESTAMP DEFAULT NOW()
+);
+
 CREATE TABLE submissions (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   grade_id      UUID REFERENCES grades(id),
