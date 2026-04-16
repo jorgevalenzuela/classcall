@@ -156,7 +156,7 @@ export default function CallPanel({
                         className="chip chip-volunteer"
                         onClick={() => callVolunteer(student.id)}
                       >
-                        {student.name}
+                        {formatVolunteerName(student.name)}
                       </button>
                     ))}
                   </div>
