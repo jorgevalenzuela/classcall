@@ -317,10 +317,6 @@ export default function StudentApp() {
   }
 
   if (view === 'instructor') return <InstructorApp />
-
-  if (!isLoggedIn || view === 'login') {
-    return <LoginView onRequestCode={handleRequestCode} loading={loading} error={error} />
-  }
   if (view === 'verify') {
     return (
       <VerifyView
@@ -334,6 +330,9 @@ export default function StudentApp() {
   }
   if (view === 'setup') {
     return <SetupView onSave={handleSetup} loading={loading} error={error} />
+  }
+  if (!isLoggedIn || view === 'login') {
+    return <LoginView onRequestCode={handleRequestCode} loading={loading} error={error} />
   }
 
   return (
