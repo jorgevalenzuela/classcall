@@ -31,6 +31,7 @@ async function apiFetch(path, options = {}, token = null) {
 
 export function useStudent() {
   const [token,    setToken]    = useState(getStoredToken)
+  const [role,     setRole]     = useState(null)
   const [profile,  setProfile]  = useState(null)
   const [progress, setProgress] = useState(null)
   const [loading,  setLoading]  = useState(false)
@@ -63,6 +64,7 @@ export function useStudent() {
       })
       storeToken(jwt)
       setToken(jwt)
+      setRole(role)
       return { role }
     } catch (e) {
       setError(e.message)
@@ -75,6 +77,7 @@ export function useStudent() {
   const logout = useCallback(() => {
     clearToken()
     setToken(null)
+    setRole(null)
     setProfile(null)
     setProgress(null)
   }, [])
@@ -153,14 +156,15 @@ export function useStudent() {
     }
   }, [token])
 
-  // Load profile on token change
+  // Load profile on token change — students only; instructors have no profile endpoint
   useEffect(() => {
-    if (token) fetchProfile()
-  }, [token]) // eslint-disable-line react-hooks/exhaustive-deps
+    if (token && role === 'student') fetchProfile()
+  }, [token, role]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return {
     isLoggedIn,
     token,
+    role,
     profile,
     progress,
     loading,
