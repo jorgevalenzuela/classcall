@@ -18,17 +18,22 @@ export const LIKERT_COLORS = {
   5: '#2563eb',
 }
 
-/** Average raw score (1–5) for a student's grade array. */
-export function avgScore(grades) {
-  if (!grades || grades.length === 0) return null
-  return grades.reduce((sum, g) => sum + g.score, 0) / grades.length
+/** Average raw score (1–5). Returns null if no entries. */
+export function getAvgScore(gradeEntries) {
+  if (!gradeEntries || gradeEntries.length === 0) return null
+  return gradeEntries.reduce((sum, g) => sum + g.score, 0) / gradeEntries.length
 }
 
-/** Percentage of max (5) for display in leaderboard bars. */
-export function pctScore(grades) {
-  const avg = avgScore(grades)
+/** Percentage of max (5), rounded integer. Returns null if no entries. */
+export function getScorePct(gradeEntries) {
+  const avg = getAvgScore(gradeEntries)
   if (avg === null) return null
   return Math.round((avg / 5) * 100)
+}
+
+/** Hex color for a Likert score 1–5. */
+export function getScoreColor(score) {
+  return LIKERT_COLORS[score] ?? LIKERT_COLORS[1]
 }
 
 /** Build sorted leaderboard entries from roster + grades map. */
@@ -36,19 +41,18 @@ export function buildLeaderboard(roster, grades) {
   return roster
     .map((student, idx) => {
       const g = grades[student.id] || []
-      const pct = pctScore(g)
-      const avg = avgScore(g)
+      const pct = getScorePct(g)
+      const avg = getAvgScore(g)
       return {
         id: student.id,
         name: student.name,
         pct,
         avg,
         attempts: g.length,
-        rank: idx, // filled after sort
+        rank: idx,
       }
     })
     .sort((a, b) => {
-      // Graded students first, sorted by pct desc; ungraded at bottom
       if (a.pct === null && b.pct === null) return 0
       if (a.pct === null) return 1
       if (b.pct === null) return -1

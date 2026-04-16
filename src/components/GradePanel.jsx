@@ -6,13 +6,13 @@
  *        followed by the full session grade history.
  */
 
-import { LIKERT_LABELS, LIKERT_COLORS, avgScore } from '../utils/scoring'
+import { LIKERT_LABELS, LIKERT_COLORS, getAvgScore } from '../utils/scoring'
 
 function fmt(ts) {
   return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
-export default function GradePanel({ roster, grades, history, selected, gradeSelected, skipGrade }) {
+export default function GradePanel({ roster, grades, history, selected, recordGrade, skipGrade }) {
   return (
     <div className="panel">
       <div className="panel-header">
@@ -36,7 +36,7 @@ export default function GradePanel({ roster, grades, history, selected, gradeSel
                 key={score}
                 className="likert-btn"
                 style={{ '--likert-color': LIKERT_COLORS[score] }}
-                onClick={() => gradeSelected(score)}
+                onClick={() => recordGrade(selected.id, score)}
                 title={LIKERT_LABELS[score]}
               >
                 <span className="likert-num">{score}</span>
@@ -61,7 +61,7 @@ export default function GradePanel({ roster, grades, history, selected, gradeSel
           <div className="grade-summary-grid">
             {roster.map(student => {
               const g = grades[student.id] || []
-              const avg = avgScore(g)
+              const avg = getAvgScore(g)
               return (
                 <div key={student.id} className="grade-summary-row">
                   <span className="gs-name">{student.name}</span>

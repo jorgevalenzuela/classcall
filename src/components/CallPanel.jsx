@@ -12,7 +12,7 @@ import { LIKERT_LABELS, LIKERT_COLORS } from '../utils/scoring'
 
 export default function CallPanel({
   roster, pool, called, selected, volunteerMode, settings,
-  callRandom, callVolunteer, gradeSelected, skipGrade, setVolunteerMode,
+  pickRandom, callVolunteer, recordGrade, skipGrade, setVolunteerMode,
   instructorMode,
 }) {
   // Re-key the selected div on each new selection to re-trigger animation
@@ -76,7 +76,7 @@ export default function CallPanel({
                     key={score}
                     className="likert-btn"
                     style={{ '--likert-color': LIKERT_COLORS[score] }}
-                    onClick={() => gradeSelected(score)}
+                    onClick={() => recordGrade(selected.id, score)}
                     title={LIKERT_LABELS[score]}
                   >
                     <span className="likert-num">{score}</span>
@@ -113,7 +113,7 @@ export default function CallPanel({
               <div className="call-buttons">
                 <button
                   className="btn btn-primary btn-xl"
-                  onClick={() => { callRandom(); setVolunteerMode(false) }}
+                  onClick={() => { pickRandom(); setVolunteerMode(false) }}
                   disabled={poolEmpty}
                 >
                   🎲 Call Random

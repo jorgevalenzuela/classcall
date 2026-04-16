@@ -9,7 +9,7 @@
 import { useRef } from 'react'
 import { parseCSV } from '../utils/csvParser'
 
-export default function RosterManager({ roster, pool, called, setRoster }) {
+export default function RosterManager({ roster, pool, called, loadRoster }) {
   const fileRef = useRef(null)
 
   function handleFile(e) {
@@ -19,7 +19,7 @@ export default function RosterManager({ roster, pool, called, setRoster }) {
     reader.onload = (ev) => {
       const students = parseCSV(ev.target.result)
       if (students.length > 0) {
-        setRoster(students)
+        loadRoster(students)
       } else {
         alert('No students found. Check that your CSV has a name, first, or last column.')
       }
@@ -68,7 +68,7 @@ export default function RosterManager({ roster, pool, called, setRoster }) {
               const reader = new FileReader()
               reader.onload = ev => {
                 const students = parseCSV(ev.target.result)
-                if (students.length > 0) setRoster(students)
+                if (students.length > 0) loadRoster(students)
               }
               reader.readAsText(file)
             }

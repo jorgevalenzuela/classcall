@@ -7,7 +7,7 @@
  * • Students with no grades appear at the bottom as "—"
  */
 
-import { buildLeaderboard, LIKERT_COLORS } from '../utils/scoring'
+import { LIKERT_COLORS } from '../utils/scoring'
 
 function scoreColor(pct) {
   if (pct === null) return '#94a3b8'
@@ -18,8 +18,8 @@ function scoreColor(pct) {
   return LIKERT_COLORS[1]
 }
 
-export default function Leaderboard({ roster, grades, settings, updateSettings }) {
-  const entries = buildLeaderboard(roster, grades)
+export default function Leaderboard({ roster, settings, getLeaderboard, setLbMode }) {
+  const entries = getLeaderboard()
   const anonymous = settings.lbMode === 'anonymous'
 
   return (
@@ -32,7 +32,7 @@ export default function Leaderboard({ roster, grades, settings, updateSettings }
         <button
           className={`btn ${anonymous ? 'btn-active' : 'btn-secondary'}`}
           onClick={() =>
-            updateSettings({ lbMode: anonymous ? 'named' : 'anonymous' })
+            setLbMode(anonymous ? 'named' : 'anonymous')
           }
           title="Toggle named/anonymous"
         >

@@ -4,7 +4,7 @@
 
 export default function SettingsPanel({
   roster, history, settings,
-  resetPool, updateSettings, clearAll, clearGrades,
+  resetPool, setPoolMode, clearAll, clearGrades,
 }) {
   function confirmClear(label, action) {
     if (window.confirm(`Clear ${label}? This cannot be undone.`)) action()
@@ -25,7 +25,7 @@ export default function SettingsPanel({
         <div className="mode-cards">
           <button
             className={`mode-card ${settings.poolMode === 'session' ? 'mode-card-active' : ''}`}
-            onClick={() => updateSettings({ poolMode: 'session' })}
+            onClick={() => setPoolMode('session')}
           >
             <span className="mode-icon">⏹</span>
             <span className="mode-name">Session reset</span>
@@ -33,7 +33,7 @@ export default function SettingsPanel({
           </button>
           <button
             className={`mode-card ${settings.poolMode === 'roundrobin' ? 'mode-card-active' : ''}`}
-            onClick={() => updateSettings({ poolMode: 'roundrobin' })}
+            onClick={() => setPoolMode('roundrobin')}
           >
             <span className="mode-icon">↻</span>
             <span className="mode-name">Round-robin</span>

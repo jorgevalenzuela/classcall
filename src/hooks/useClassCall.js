@@ -2,18 +2,19 @@
  * useClassCall — all app state + localStorage persistence (FR-06).
  *
  * localStorage keys:
- *   jscc_roster  → [{ id, name }]
- *   cc_grades    → { [studentId]: [{ score, ts }] }
- *   cc_pool      → [studentId, ...]
- *   cc_called    → [studentId, ...]
- *   cc_history   → [{ name, score, type, ts }]
- *   cc_settings  → { poolMode, lbMode }
+ *   cc_roster   → [{ id, name }]
+ *   cc_grades   → { [studentId]: [{ score, ts }] }
+ *   cc_pool     → [studentId, ...]
+ *   cc_called   → [studentId, ...]
+ *   cc_history  → [{ name, score, type, ts }]
+ *   cc_settings → { poolMode, lbMode }
  */
 
 import { useState, useEffect, useCallback } from 'react'
+import { buildLeaderboard } from '../utils/scoring'
 
 const KEYS = {
-  roster:   'jscc_roster',
+  roster:   'cc_roster',
   grades:   'cc_grades',
   pool:     'cc_pool',
   called:   'cc_called',
@@ -57,20 +58,21 @@ export function useClassCall() {
   useEffect(() => { saveLS(KEYS.settings, settings) }, [settings])
 
   // ── Roster ───────────────────────────────────────────────────────────────────
-  /** Replace roster, reset pool to all students, clear session. */
-  const setRoster = useCallback((students) => {
+  /** Replace roster, reset pool to all students, clear session and grades. */
+  const loadRoster = useCallback((students) => {
     setRosterRaw(students)
+    setGradesRaw({})
     setPoolRaw(students.map(s => s.id))
     setCalledRaw([])
+    setHistoryRaw([])
     setSelected(null)
     setVolunteerMode(false)
   }, [])
 
   // ── Internal helper ──────────────────────────────────────────────────────────
-  /** Remove studentId from pool, add to called, set selected. */
   function _pick(studentId, type, currentPool, currentRoster, currentSettings) {
     const student = currentRoster.find(s => s.id === studentId)
-    if (!student) return false
+    if (!student) return null
 
     let newPool = currentPool.filter(id => id !== studentId)
 
@@ -83,35 +85,39 @@ export function useClassCall() {
     setCalledRaw(prev => [...prev, studentId])
     setSelected({ ...student, type })
     setVolunteerMode(false)
-    return true
+    return student
   }
 
   // ── Selection ────────────────────────────────────────────────────────────────
-  const callRandom = useCallback(() => {
-    if (pool.length === 0) return false
+  /** Pick a random student from pool. Returns student object or null if pool is empty. */
+  const pickRandom = useCallback(() => {
+    if (pool.length === 0) return null
     const idx = Math.floor(Math.random() * pool.length)
     return _pick(pool[idx], 'random', pool, roster, settings)
   }, [pool, roster, settings]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const callVolunteer = useCallback((studentId) => {
-    if (!pool.includes(studentId)) return false
+    if (!pool.includes(studentId)) return null
     return _pick(studentId, 'volunteer', pool, roster, settings)
   }, [pool, roster, settings]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Grading ──────────────────────────────────────────────────────────────────
-  const gradeSelected = useCallback((score) => {
-    if (!selected) return
+  /** Record a grade for a student by id. Appends to grades map and history. */
+  const recordGrade = useCallback((studentId, score) => {
+    const student = roster.find(s => s.id === studentId)
+    if (!student) return
+    const type = (selected && selected.id === studentId) ? selected.type : 'random'
     const entry = { score, ts: Date.now() }
     setGradesRaw(prev => ({
       ...prev,
-      [selected.id]: [...(prev[selected.id] || []), entry],
+      [studentId]: [...(prev[studentId] || []), entry],
     }))
     setHistoryRaw(prev => [
-      { name: selected.name, score, type: selected.type, ts: Date.now() },
+      { name: student.name, score, type, ts: Date.now() },
       ...prev,
     ])
     setSelected(null)
-  }, [selected])
+  }, [roster, selected])
 
   /** Dismiss selected student without grading. */
   const skipGrade = useCallback(() => {
@@ -127,9 +133,24 @@ export function useClassCall() {
   }, [roster])
 
   // ── Settings ─────────────────────────────────────────────────────────────────
+  const setPoolMode = useCallback((mode) => {
+    setSettingsRaw(prev => ({ ...prev, poolMode: mode }))
+  }, [])
+
+  const setLbMode = useCallback((mode) => {
+    setSettingsRaw(prev => ({ ...prev, lbMode: mode }))
+  }, [])
+
+  /** Patch any settings keys — kept for internal component use. */
   const updateSettings = useCallback((patch) => {
     setSettingsRaw(prev => ({ ...prev, ...patch }))
   }, [])
+
+  // ── Leaderboard ──────────────────────────────────────────────────────────────
+  /** Returns roster sorted by avg score % descending; ungraded at bottom. */
+  const getLeaderboard = useCallback(() => {
+    return buildLeaderboard(roster, grades)
+  }, [roster, grades])
 
   // ── Data management ──────────────────────────────────────────────────────────
   const clearAll = useCallback(() => {
@@ -161,15 +182,19 @@ export function useClassCall() {
     settings,
     selected,
     volunteerMode,
-    // Actions
-    setRoster,
-    callRandom,
-    callVolunteer,
-    gradeSelected,
-    skipGrade,
+    // Actions — spec API
+    loadRoster,
+    pickRandom,
     resetPool,
-    updateSettings,
+    recordGrade,
+    setPoolMode,
+    setLbMode,
+    getLeaderboard,
     clearAll,
+    // Additional actions used by components
+    callVolunteer,
+    skipGrade,
+    updateSettings,
     clearGrades,
     setVolunteerMode,
   }

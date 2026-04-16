@@ -2,11 +2,12 @@
  * CSV parser with flexible column detection (FR-01).
  *
  * Detection priority:
- *  1. Single "name" / "full name" / "student name" column
- *  2. Separate "first" + "last" columns (combined as "First Last")
- *  3. First column only (no header match)
+ *  1. Separate "first" + "last" columns → combined as "First Last"
+ *  2. A column containing "name" → used directly
+ *  3. Fallback → first column
  *
  * Returns: [{ id: string, name: string }]
+ * id format: 'sid_' + index + '_' + random
  */
 
 function parseCSVLine(line) {
@@ -42,15 +43,17 @@ export function parseCSV(text) {
   const rawHeaders = parseCSVLine(lines[0])
   const headers = rawHeaders.map(normalize)
 
-  // Column index detection
-  const nameIdx = headers.findIndex(h =>
-    h === 'name' || h === 'fullname' || h === 'studentname' || h === 'studentfullname'
-  )
+  // Priority 1: separate first + last columns
   const firstIdx = headers.findIndex(h =>
     h === 'first' || h === 'firstname' || h === 'givenname'
   )
   const lastIdx = headers.findIndex(h =>
     h === 'last' || h === 'lastname' || h === 'surname' || h === 'familyname'
+  )
+
+  // Priority 2: a column containing "name"
+  const nameIdx = headers.findIndex(h =>
+    h === 'name' || h === 'fullname' || h === 'studentname' || h === 'studentfullname'
   )
 
   const students = []
@@ -59,24 +62,28 @@ export function parseCSV(text) {
     const cols = parseCSVLine(line)
     let name
 
-    if (nameIdx >= 0) {
-      name = cols[nameIdx] || ''
-    } else if (firstIdx >= 0 && lastIdx >= 0) {
+    if (firstIdx >= 0 && lastIdx >= 0) {
+      // Priority 1: first + last
       const first = cols[firstIdx] || ''
-      const last = cols[lastIdx] || ''
+      const last  = cols[lastIdx]  || ''
       name = `${first} ${last}`.trim()
     } else if (firstIdx >= 0) {
       name = cols[firstIdx] || ''
+    } else if (nameIdx >= 0) {
+      // Priority 2: name column
+      name = cols[nameIdx] || ''
     } else {
-      // Fallback: first column
+      // Priority 3: first column
       name = cols[0] || ''
     }
 
     name = name.replace(/^["']|["']$/g, '').trim()
     if (!name) continue
 
+    const idx = students.length
+    const rand = Math.random().toString(36).slice(2, 8)
     students.push({
-      id: crypto.randomUUID(),
+      id: `sid_${idx}_${rand}`,
       name,
     })
   }
