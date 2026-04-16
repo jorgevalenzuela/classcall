@@ -7,7 +7,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 
-const API = 'http://localhost:3001/api'
+const API = '/api'
 const TOKEN_KEY = 'cc_student_token'
 
 function getStoredToken() {
