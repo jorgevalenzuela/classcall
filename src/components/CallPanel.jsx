@@ -13,7 +13,7 @@ import { formatVolunteerName } from '../hooks/useClassCall'
 
 export default function CallPanel({
   roster, pool, called, selected, volunteerMode, settings,
-  pickRandom, callVolunteer, recordGrade, skipGrade, skipStudent, setVolunteerMode,
+  pickRandom, callVolunteer, recordGrade, skipStudent, setVolunteerMode,
   instructorMode,
 }) {
   // Re-key the selected div on each new selection to re-trigger animation
@@ -89,9 +89,6 @@ export default function CallPanel({
                   </button>
                 ))}
               </div>
-              <button className="btn btn-ghost" onClick={skipGrade}>
-                Skip — no grade
-              </button>
               {selected.type === 'random' && (
                 <button className="btn btn-ghost" onClick={skipStudent}>
                   Skip
@@ -102,7 +99,7 @@ export default function CallPanel({
 
           {/* Student view: just dismiss */}
           {!instructorMode && (
-            <button className="btn btn-secondary" style={{ marginTop: '1.5rem' }} onClick={skipGrade}>
+            <button className="btn btn-secondary" style={{ marginTop: '1.5rem' }} onClick={skipStudent}>
               Next student
             </button>
           )}
