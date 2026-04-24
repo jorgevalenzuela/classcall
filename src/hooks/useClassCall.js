@@ -10,8 +10,9 @@
  *   cc_settings → { poolMode, lbMode }
  */
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { buildLeaderboard } from '../utils/scoring'
+import { apiFetch } from '../utils/apiClient'
 
 const KEYS = {
   roster:   'cc_roster',
@@ -49,7 +50,12 @@ export function formatVolunteerName(fullName) {
   return `${first} ${lastInitial}.`
 }
 
-export function useClassCall() {
+export function useClassCall({ classId = null, sessionId = null } = {}) {
+  // Keep latest sessionId/classId in refs so callbacks always see current values
+  const sessionIdRef = useRef(sessionId)
+  const classIdRef   = useRef(classId)
+  useEffect(() => { sessionIdRef.current = sessionId }, [sessionId])
+  useEffect(() => { classIdRef.current   = classId   }, [classId])
   const [roster,   setRosterRaw]   = useState(() => sortByName(loadLS(KEYS.roster, [])))
   const [grades,   setGradesRaw]   = useState(() => loadLS(KEYS.grades,   {}))
   const [pool,     setPoolRaw]     = useState(() => loadLS(KEYS.pool,     []))
@@ -97,6 +103,15 @@ export function useClassCall() {
     setCalledRaw(prev => [...prev, studentId])
     setSelected({ ...student, type })
     setVolunteerMode(false)
+
+    // Mark attendance — fire-and-forget, non-blocking
+    if (sessionIdRef.current) {
+      apiFetch(`/attendance/${sessionIdRef.current}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ student_id: studentId, present: true }),
+      }).catch(() => { /* attendance API failed — localStorage state is source of truth */ })
+    }
+
     return student
   }
 
@@ -129,6 +144,14 @@ export function useClassCall() {
       ...prev,
     ])
     setSelected(null)
+
+    // Persist to API — fire-and-forget; localStorage write above is the fallback
+    if (sessionIdRef.current) {
+      apiFetch('/grades', {
+        method: 'POST',
+        body: JSON.stringify({ session_id: sessionIdRef.current, student_id: studentId, score, type }),
+      }).catch(() => { /* API failed — grade is already saved in localStorage */ })
+    }
   }, [roster, selected])
 
   /** Dismiss selected student without grading. */

@@ -2,6 +2,11 @@
  * InstructorApp — instructor shell, always in instructor mode.
  * Rendered when the JWT role is 'instructor'.
  * Grade tab is always visible; no mode toggle.
+ *
+ * Flow:
+ *   1. ClassSelector → instructor picks or creates a class (classId)
+ *   2. POST /api/sessions to open a session (sessionId)
+ *   3. Main shell renders with classId + sessionId in useClassCall
  */
 
 import { useState } from 'react'
@@ -11,18 +16,40 @@ import CallPanel      from '../components/CallPanel'
 import GradePanel     from '../components/GradePanel'
 import Leaderboard    from '../components/Leaderboard'
 import SettingsPanel  from '../components/SettingsPanel'
+import ClassSelector  from './ClassSelector'
+import { apiFetch }   from '../utils/apiClient'
 
 const TABS = [
-  { id: 'roster',      label: 'Roster'     },
-  { id: 'call',        label: 'Call'       },
-  { id: 'grade',       label: 'Grade'      },
-  { id: 'leaderboard', label: 'Leaderboard'},
-  { id: 'settings',    label: 'Settings'   },
+  { id: 'roster',      label: 'Roster'      },
+  { id: 'call',        label: 'Call'        },
+  { id: 'grade',       label: 'Grade'       },
+  { id: 'leaderboard', label: 'Leaderboard' },
+  { id: 'settings',    label: 'Settings'    },
 ]
 
 export default function InstructorApp() {
-  const state = useClassCall()
-  const [tab, setTab] = useState('call')
+  const [classId,   setClassId]   = useState(null)
+  const [sessionId, setSessionId] = useState(null)
+  const [tab,       setTab]       = useState('call')
+
+  const state = useClassCall({ classId, sessionId })
+
+  async function handleClassSelect(id) {
+    try {
+      const session = await apiFetch('/sessions', {
+        method: 'POST',
+        body: JSON.stringify({ class_id: id }),
+      })
+      setClassId(id)
+      setSessionId(session.id)
+    } catch {
+      // API failed — still proceed without a session so the app works offline
+      setClassId(id)
+      setSessionId(null)
+    }
+  }
+
+  if (!classId) return <ClassSelector onSelect={handleClassSelect} />
 
   return (
     <div className="app">
@@ -59,7 +86,7 @@ export default function InstructorApp() {
       </nav>
 
       <main className="app-main">
-        {tab === 'roster'      && <RosterManager  {...state} />}
+        {tab === 'roster'      && <RosterManager  {...state} classId={classId} />}
         {tab === 'call'        && <CallPanel       {...state} instructorMode={true} />}
         {tab === 'grade'       && <GradePanel      {...state} />}
         {tab === 'leaderboard' && <Leaderboard     {...state} instructorMode={true} />}

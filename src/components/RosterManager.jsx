@@ -8,6 +8,7 @@
 
 import { useRef } from 'react'
 import { parseCSV } from '../utils/csvParser'
+import { apiFetch } from '../utils/apiClient'
 
 function groupByLetter(students) {
   const groups = []
@@ -23,15 +24,33 @@ function groupByLetter(students) {
   return groups
 }
 
-export default function RosterManager({ roster, pool, called, loadRoster }) {
+export default function RosterManager({ roster, pool, called, loadRoster, classId }) {
   const fileRef = useRef(null)
 
   function handleFile(e) {
     const file = e.target.files[0]
     if (!file) return
     const reader = new FileReader()
-    reader.onload = (ev) => {
-      const students = parseCSV(ev.target.result)
+    reader.onload = async (ev) => {
+      const csvText = ev.target.result
+
+      // Try API upload first if we have a classId; fall back to client-side parse
+      if (classId) {
+        try {
+          const { students } = await apiFetch(`/classes/${classId}/roster`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/csv' },
+            body: csvText,
+          })
+          const normalized = students.map(s => ({
+            id:   s.id,
+            name: `${s.first_name} ${s.last_name}`.trim(),
+          }))
+          if (normalized.length > 0) { loadRoster(normalized); return }
+        } catch { /* API failed — fall through to client-side parse */ }
+      }
+
+      const students = parseCSV(csvText)
       if (students.length > 0) {
         loadRoster(students)
       } else {
@@ -79,12 +98,8 @@ export default function RosterManager({ roster, pool, called, loadRoster }) {
             e.preventDefault()
             const file = e.dataTransfer.files[0]
             if (file) {
-              const reader = new FileReader()
-              reader.onload = ev => {
-                const students = parseCSV(ev.target.result)
-                if (students.length > 0) loadRoster(students)
-              }
-              reader.readAsText(file)
+              const fakeEvent = { target: { files: [file], value: '' } }
+              handleFile(fakeEvent)
             }
           }}
         >
