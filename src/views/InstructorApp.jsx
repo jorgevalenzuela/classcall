@@ -6,9 +6,12 @@
  *   1. ClassSelector → instructor picks or creates a class
  *   2. POST /api/sessions to open a session
  *   3. Main shell renders — Attendance tab first, then Call, Grade, etc.
+ *
+ * attendance Map lives here (not in AttendancePanel) so it survives tab
+ * switches. absentIds is derived from attendance via useMemo.
  */
 
-import { useState, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useClassCall } from '../hooks/useClassCall'
 import AttendancePanel from '../components/AttendancePanel'
 import RosterManager   from '../components/RosterManager'
@@ -28,16 +31,92 @@ const TABS = [
   { id: 'settings',    label: 'Settings'   },
 ]
 
+function patchAttendance(sessionId, studentId, present) {
+  apiFetch(`/attendance/${sessionId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ student_id: studentId, present }),
+  }).catch(() => { /* fail silently — local state is source of truth */ })
+}
+
 export default function InstructorApp() {
-  const [selectedClass, setSelectedClass] = useState(null)  // full class object
-  const [session,       setSession]       = useState(null)   // full session object
+  const [selectedClass, setSelectedClass] = useState(null)
+  const [session,       setSession]       = useState(null)
   const [classId,       setClassId]       = useState(null)
   const [sessionId,     setSessionId]     = useState(null)
-  const [absentIds,     setAbsentIds]     = useState(new Set())
   const [tab,           setTab]           = useState('attendance')
+
+  // ── Attendance state — lives here so it survives tab switches ─────────────
+  const [attendance, setAttendance] = useState(new Map())  // Map<studentId, boolean>
+  const [attendLoadError, setAttendLoadError] = useState('')
+
+  // Load attendance from API when session opens
+  useEffect(() => {
+    if (!sessionId) return
+    apiFetch(`/attendance/${sessionId}`)
+      .then(rows => {
+        setAttendance(prev => {
+          const next = new Map(prev)
+          for (const row of rows) next.set(row.student_id, Boolean(row.present))
+          return next
+        })
+      })
+      .catch(e => setAttendLoadError(e.message))
+  }, [sessionId])
+
+  // Derive absentIds from attendance Map — stable reference via useMemo
+  const absentIds = useMemo(() =>
+    new Set([...attendance.entries()].filter(([, p]) => !p).map(([id]) => id)),
+    [attendance]
+  )
 
   const state = useClassCall({ classId, sessionId, absentIds })
 
+  // Sync roster into attendance map when roster loads (new students default absent)
+  useEffect(() => {
+    if (state.roster.length === 0) return
+    setAttendance(prev => {
+      const next = new Map(prev)
+      for (const s of state.roster) {
+        if (!next.has(s.id)) next.set(s.id, false)
+      }
+      return next
+    })
+  }, [state.roster])
+
+  // ── Attendance actions ─────────────────────────────────────────────────────
+  const handleToggle = useCallback((studentId) => {
+    setAttendance(prev => {
+      const next = new Map(prev)
+      const nowPresent = !prev.get(studentId)
+      next.set(studentId, nowPresent)
+      if (sessionId) patchAttendance(sessionId, studentId, nowPresent)
+      return next
+    })
+  }, [sessionId])
+
+  const handleMarkAllPresent = useCallback(() => {
+    setAttendance(prev => {
+      const next = new Map(prev)
+      for (const id of next.keys()) {
+        next.set(id, true)
+        if (sessionId) patchAttendance(sessionId, id, true)
+      }
+      return next
+    })
+  }, [sessionId])
+
+  const handleClearAll = useCallback(() => {
+    setAttendance(prev => {
+      const next = new Map(prev)
+      for (const id of next.keys()) {
+        next.set(id, false)
+        if (sessionId) patchAttendance(sessionId, id, false)
+      }
+      return next
+    })
+  }, [sessionId])
+
+  // ── Class / session setup ──────────────────────────────────────────────────
   async function handleClassSelect(cls) {
     try {
       const sess = await apiFetch('/sessions', {
@@ -49,15 +128,10 @@ export default function InstructorApp() {
       setClassId(cls.id)
       setSessionId(sess.id)
     } catch {
-      // API failed — still let the app run offline
       setSelectedClass(cls)
       setClassId(cls.id)
     }
   }
-
-  const handleAbsenceChange = useCallback((newAbsentIds) => {
-    setAbsentIds(newAbsentIds)
-  }, [])
 
   if (!classId) return <ClassSelector onSelect={handleClassSelect} />
 
@@ -102,10 +176,13 @@ export default function InstructorApp() {
         {tab === 'attendance'  && (
           <AttendancePanel
             roster={state.roster}
-            sessionId={sessionId}
             session={session}
             attendWindowMinutes={selectedClass?.attend_window_minutes}
-            onAbsenceChange={handleAbsenceChange}
+            attendance={attendance}
+            loadError={attendLoadError}
+            onToggle={handleToggle}
+            onMarkAllPresent={handleMarkAllPresent}
+            onClearAll={handleClearAll}
           />
         )}
         {tab === 'roster'      && <RosterManager  {...state} classId={classId} />}
