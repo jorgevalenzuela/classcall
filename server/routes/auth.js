@@ -78,9 +78,10 @@ router.post('/verify-code', async (req, res) => {
     return res.json({ token, role: 'instructor' })
   }
 
-  // Check students table
+  // Check students table — prefer rows with a class_id in case of orphaned records
   const student = await pool.query(
-    `SELECT id, class_id, alias_set FROM students WHERE email_hash = $1`, [emailHash]
+    `SELECT id, class_id, alias_set FROM students WHERE email_hash = $1
+     ORDER BY class_id NULLS LAST LIMIT 1`, [emailHash]
   )
 
   if (student.rows.length) {
