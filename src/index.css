@@ -660,6 +660,38 @@ code   { font-family: 'SF Mono', Menlo, monospace; font-size: 0.85em; }
 .stat-value { font-size: 1.5rem; font-weight: 700; color: var(--navy); }
 .stat-label { font-size: 0.75rem; color: var(--gray-500); margin-top: 0.2rem; }
 
+/* ── Attendance panel ───────────────────────────────────────────────────── */
+.attendance-actions {
+  display: flex;
+  gap: 0.6rem;
+  margin-bottom: 1.25rem;
+}
+
+.chip-present {
+  background: #dcfce7;
+  color: #166534;
+  border-color: #86efac;
+  cursor: pointer;
+  transition: var(--transition);
+  text-align: left;
+}
+.chip-present:hover { background: #bbf7d0; }
+
+.chip-absent {
+  background: var(--gray-100);
+  color: var(--gray-500);
+  border-color: var(--gray-200);
+  cursor: pointer;
+  transition: var(--transition);
+  text-align: left;
+}
+.chip-absent:hover { background: var(--gray-200); }
+
+.chip-status {
+  margin-right: 0.25rem;
+  font-size: 0.75rem;
+}
+
 /* ── Responsive ─────────────────────────────────────────────────────────── */
 @media (max-width: 600px) {
   .app-main         { padding: 0.75rem; }

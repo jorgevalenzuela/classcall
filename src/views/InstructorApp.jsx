@@ -1,53 +1,63 @@
 /**
  * InstructorApp — instructor shell, always in instructor mode.
  * Rendered when the JWT role is 'instructor'.
- * Grade tab is always visible; no mode toggle.
  *
  * Flow:
- *   1. ClassSelector → instructor picks or creates a class (classId)
- *   2. POST /api/sessions to open a session (sessionId)
- *   3. Main shell renders with classId + sessionId in useClassCall
+ *   1. ClassSelector → instructor picks or creates a class
+ *   2. POST /api/sessions to open a session
+ *   3. Main shell renders — Attendance tab first, then Call, Grade, etc.
  */
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useClassCall } from '../hooks/useClassCall'
-import RosterManager  from '../components/RosterManager'
-import CallPanel      from '../components/CallPanel'
-import GradePanel     from '../components/GradePanel'
-import Leaderboard    from '../components/Leaderboard'
-import SettingsPanel  from '../components/SettingsPanel'
-import ClassSelector  from './ClassSelector'
-import { apiFetch }   from '../utils/apiClient'
+import AttendancePanel from '../components/AttendancePanel'
+import RosterManager   from '../components/RosterManager'
+import CallPanel       from '../components/CallPanel'
+import GradePanel      from '../components/GradePanel'
+import Leaderboard     from '../components/Leaderboard'
+import SettingsPanel   from '../components/SettingsPanel'
+import ClassSelector   from './ClassSelector'
+import { apiFetch }    from '../utils/apiClient'
 
 const TABS = [
-  { id: 'roster',      label: 'Roster'      },
-  { id: 'call',        label: 'Call'        },
-  { id: 'grade',       label: 'Grade'       },
-  { id: 'leaderboard', label: 'Leaderboard' },
-  { id: 'settings',    label: 'Settings'    },
+  { id: 'attendance',  label: 'Attendance' },
+  { id: 'roster',      label: 'Roster'     },
+  { id: 'call',        label: 'Call'       },
+  { id: 'grade',       label: 'Grade'      },
+  { id: 'leaderboard', label: 'Leaderboard'},
+  { id: 'settings',    label: 'Settings'   },
 ]
 
 export default function InstructorApp() {
-  const [classId,   setClassId]   = useState(null)
-  const [sessionId, setSessionId] = useState(null)
-  const [tab,       setTab]       = useState('call')
+  const [selectedClass, setSelectedClass] = useState(null)  // full class object
+  const [session,       setSession]       = useState(null)   // full session object
+  const [classId,       setClassId]       = useState(null)
+  const [sessionId,     setSessionId]     = useState(null)
+  const [absentIds,     setAbsentIds]     = useState(new Set())
+  const [tab,           setTab]           = useState('attendance')
 
-  const state = useClassCall({ classId, sessionId })
+  const state = useClassCall({ classId, sessionId, absentIds })
 
-  async function handleClassSelect(id) {
+  async function handleClassSelect(cls) {
     try {
-      const session = await apiFetch('/sessions', {
+      const sess = await apiFetch('/sessions', {
         method: 'POST',
-        body: JSON.stringify({ class_id: id }),
+        body: JSON.stringify({ class_id: cls.id }),
       })
-      setClassId(id)
-      setSessionId(session.id)
+      setSelectedClass(cls)
+      setSession(sess)
+      setClassId(cls.id)
+      setSessionId(sess.id)
     } catch {
-      // API failed — still proceed without a session so the app works offline
-      setClassId(id)
-      setSessionId(null)
+      // API failed — still let the app run offline
+      setSelectedClass(cls)
+      setClassId(cls.id)
     }
   }
+
+  const handleAbsenceChange = useCallback((newAbsentIds) => {
+    setAbsentIds(newAbsentIds)
+  }, [])
 
   if (!classId) return <ClassSelector onSelect={handleClassSelect} />
 
@@ -63,6 +73,9 @@ export default function InstructorApp() {
             <rect x="35" y="52" width="20" height="4" rx="2" fill="#2563eb"/>
           </svg>
           <span className="header-title">ClassCall</span>
+          {selectedClass && (
+            <span className="header-roster">{selectedClass.name}</span>
+          )}
         </div>
         <div className="header-right">
           {state.roster.length > 0 && (
@@ -86,8 +99,17 @@ export default function InstructorApp() {
       </nav>
 
       <main className="app-main">
+        {tab === 'attendance'  && (
+          <AttendancePanel
+            roster={state.roster}
+            sessionId={sessionId}
+            session={session}
+            attendWindowMinutes={selectedClass?.attend_window_minutes}
+            onAbsenceChange={handleAbsenceChange}
+          />
+        )}
         {tab === 'roster'      && <RosterManager  {...state} classId={classId} />}
-        {tab === 'call'        && <CallPanel       {...state} instructorMode={true} />}
+        {tab === 'call'        && <CallPanel       {...state} instructorMode={true} absentIds={absentIds} />}
         {tab === 'grade'       && <GradePanel      {...state} />}
         {tab === 'leaderboard' && <Leaderboard     {...state} instructorMode={true} />}
         {tab === 'settings'    && <SettingsPanel   {...state} />}

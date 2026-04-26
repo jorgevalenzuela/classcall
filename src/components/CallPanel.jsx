@@ -14,7 +14,7 @@ import { formatVolunteerName } from '../hooks/useClassCall'
 export default function CallPanel({
   roster, pool, called, selected, volunteerMode, settings,
   pickRandom, callVolunteer, recordGrade, skipStudent, setVolunteerMode,
-  instructorMode,
+  instructorMode, absentIds = new Set(),
 }) {
   // Re-key the selected div on each new selection to re-trigger animation
   const animRef = useRef(null)
@@ -33,7 +33,7 @@ export default function CallPanel({
 
   const poolEmpty     = pool.length === 0
   const rosterEmpty   = roster.length === 0
-  const uncalledInPool = roster.filter(s => pool.includes(s.id))
+  const uncalledInPool = roster.filter(s => pool.includes(s.id) && !absentIds.has(s.id))
 
   return (
     <div className="panel">

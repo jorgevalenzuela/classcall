@@ -1,7 +1,7 @@
 /**
  * ClassSelector — shown before the instructor shell.
  * Fetches existing classes and lets the instructor select or create one.
- * Calls onSelect(classId) when ready.
+ * Calls onSelect(cls) with the full class object when ready.
  */
 
 import { useState, useEffect } from 'react'
@@ -29,7 +29,7 @@ export default function ClassSelector({ onSelect }) {
         method: 'POST',
         body: JSON.stringify({ name: name.trim(), section: section.trim() || null, semester: semester.trim() || null }),
       })
-      onSelect(cls.id)
+      onSelect(cls)
     } catch (e) {
       setError(e.message)
     } finally {
@@ -46,7 +46,7 @@ export default function ClassSelector({ onSelect }) {
           {classes.map(cls => (
             <button key={cls.id} className="btn btn-secondary"
               style={{ display: 'block', width: '100%', marginBottom: '0.5rem', textAlign: 'left' }}
-              onClick={() => onSelect(cls.id)}>
+              onClick={() => onSelect(cls)}>
               {cls.name}{cls.section ? ` · ${cls.section}` : ''}{cls.semester ? ` · ${cls.semester}` : ''}
             </button>
           ))}

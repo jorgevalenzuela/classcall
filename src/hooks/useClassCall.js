@@ -50,12 +50,14 @@ export function formatVolunteerName(fullName) {
   return `${first} ${lastInitial}.`
 }
 
-export function useClassCall({ classId = null, sessionId = null } = {}) {
-  // Keep latest sessionId/classId in refs so callbacks always see current values
+export function useClassCall({ classId = null, sessionId = null, absentIds = new Set() } = {}) {
+  // Keep latest values in refs so callbacks always see current values without stale closures
   const sessionIdRef = useRef(sessionId)
   const classIdRef   = useRef(classId)
+  const absentIdsRef = useRef(absentIds)
   useEffect(() => { sessionIdRef.current = sessionId }, [sessionId])
   useEffect(() => { classIdRef.current   = classId   }, [classId])
+  useEffect(() => { absentIdsRef.current = absentIds }, [absentIds])
   const [roster,   setRosterRaw]   = useState(() => sortByName(loadLS(KEYS.roster, [])))
   const [grades,   setGradesRaw]   = useState(() => loadLS(KEYS.grades,   {}))
   const [pool,     setPoolRaw]     = useState(() => loadLS(KEYS.pool,     []))
@@ -116,15 +118,17 @@ export function useClassCall({ classId = null, sessionId = null } = {}) {
   }
 
   // ── Selection ────────────────────────────────────────────────────────────────
-  /** Pick a random student from pool. Returns student object or null if pool is empty. */
+  /** Pick a random student from pool, excluding absent students. Returns student or null. */
   const pickRandom = useCallback(() => {
-    if (pool.length === 0) return null
-    const idx = Math.floor(Math.random() * pool.length)
-    return _pick(pool[idx], 'random', pool, roster, settings)
+    const eligible = pool.filter(id => !absentIdsRef.current.has(id))
+    if (eligible.length === 0) return null
+    const idx = Math.floor(Math.random() * eligible.length)
+    return _pick(eligible[idx], 'random', pool, roster, settings)
   }, [pool, roster, settings]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const callVolunteer = useCallback((studentId) => {
     if (!pool.includes(studentId)) return null
+    if (absentIdsRef.current.has(studentId)) return null
     return _pick(studentId, 'volunteer', pool, roster, settings)
   }, [pool, roster, settings]) // eslint-disable-line react-hooks/exhaustive-deps
 
