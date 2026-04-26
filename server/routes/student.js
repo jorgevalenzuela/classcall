@@ -22,7 +22,7 @@ router.get('/profile', studentOnly, async (req, res) => {
     `SELECT id, class_id, first_name, last_name, display_alias, display_avatar,
             alias_set, participate_mode
      FROM students WHERE id = $1`,
-    [req.user.sub]
+    [req.user.id]
   )
   if (rows.length === 0) return res.status(404).json({ error: 'Student not found' })
   res.json(rows[0])
@@ -42,7 +42,7 @@ router.patch('/profile', studentOnly, async (req, res) => {
          alias_set       = CASE WHEN $1 IS NOT NULL THEN TRUE ELSE alias_set END
      WHERE id = $4
      RETURNING id, display_alias, display_avatar, alias_set, participate_mode`,
-    [display_alias ?? null, display_avatar ?? null, participate_mode ?? null, req.user.sub]
+    [display_alias ?? null, display_avatar ?? null, participate_mode ?? null, req.user.id]
   )
   if (rows.length === 0) return res.status(404).json({ error: 'Student not found' })
   res.json(rows[0])
@@ -54,7 +54,7 @@ router.patch('/profile', studentOnly, async (req, res) => {
  * Leaderboard data is alias-only (FERPA).
  */
 router.get('/progress', studentOnly, ferpaStrip, async (req, res) => {
-  const studentId = req.user.sub
+  const studentId = req.user.id
 
   // Personal grades
   const { rows: grades } = await pool.query(
@@ -79,7 +79,7 @@ router.get('/progress', studentOnly, ferpaStrip, async (req, res) => {
      WHERE s.class_id = $1
      GROUP BY student_id
      ORDER BY avg_score DESC`,
-    [req.user.class_id]
+    [req.user.classId]
   )
 
   const totalStudents = classStats.length
@@ -110,7 +110,7 @@ router.get('/session', studentOnly, async (req, res) => {
      WHERE st.id = $1 AND s.closed_at IS NULL
      ORDER BY s.opened_at DESC
      LIMIT 1`,
-    [req.user.sub]
+    [req.user.id]
   )
   res.json(rows[0] ?? null)
 })
@@ -165,7 +165,7 @@ router.post('/checkin', studentOnly, async (req, res) => {
      ON CONFLICT (session_id, student_id) DO UPDATE
        SET present = TRUE, checked_in_at = NOW()
      RETURNING *`,
-    [session_id, req.user.sub]
+    [session_id, req.user.id]
   )
   res.status(201).json(rows[0])
 })
@@ -180,7 +180,7 @@ router.post('/submit', studentOnly, async (req, res) => {
     return res.status(400).json({ error: 'session_id and content are required' })
   }
 
-  const studentId = req.user.sub
+  const studentId = req.user.id
 
   const { rows: gradeRows } = await pool.query(
     `SELECT id FROM grades
