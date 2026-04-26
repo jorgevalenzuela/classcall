@@ -77,7 +77,7 @@ export default function InstructorApp() {
     setAttendance(prev => {
       const next = new Map(prev)
       for (const s of state.roster) {
-        if (!next.has(s.id)) next.set(s.id, false)
+        if (!next.has(s.id)) next.set(s.id, true)
       }
       return next
     })
