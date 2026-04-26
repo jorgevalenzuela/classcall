@@ -14,9 +14,10 @@ router.post('/', async (req, res) => {
   const { class_id } = req.body
   if (!class_id) return res.status(400).json({ error: 'class_id is required' })
 
+  // Inherit allowed_ip_range from class defaults
   const { rows } = await pool.query(
-    `INSERT INTO sessions (class_id, date, opened_at)
-     VALUES ($1, CURRENT_DATE, NOW())
+    `INSERT INTO sessions (class_id, date, opened_at, allowed_ip_range)
+     SELECT $1, CURRENT_DATE, NOW(), allowed_ip_range FROM classes WHERE id = $1
      RETURNING *`,
     [class_id]
   )

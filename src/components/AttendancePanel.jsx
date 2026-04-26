@@ -1,11 +1,11 @@
 /**
- * AttendancePanel — present/absent toggle per student.
+ * AttendancePanel — read-only live check-in view.
  *
- * Purely presentational — all state lives in InstructorApp so it survives
- * tab switches. Receives attendance Map and action callbacks as props.
+ * Chips are not clickable; each has a small Override button for manual
+ * instructor correction. State lives in InstructorApp and is polled every 15s.
  */
 
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 
 function groupByLetter(students) {
   const groups = []
@@ -46,11 +46,11 @@ export default function AttendancePanel({
   attendWindowMinutes,
   attendance,       // Map<studentId, boolean>
   loadError,
-  onToggle,         // (studentId) => void
+  onOverride,       // (studentId, present) => void  — manual instructor override
   onMarkAllPresent, // () => void
   onClearAll,       // () => void
 }) {
-  const minsLeft  = useWindowCountdown(session?.opened_at, attendWindowMinutes)
+  const minsLeft   = useWindowCountdown(session?.opened_at, attendWindowMinutes)
   const windowOpen = minsLeft !== null && minsLeft > 0
   const presentCount = [...attendance.values()].filter(Boolean).length
 
@@ -59,7 +59,7 @@ export default function AttendancePanel({
       <div className="panel-header">
         <div>
           <h2 className="panel-title">Attendance</h2>
-          <p className="panel-sub">{presentCount} of {roster.length} present</p>
+          <p className="panel-sub">{presentCount} of {roster.length} checked in</p>
         </div>
 
         {minsLeft !== null && (
@@ -75,8 +75,8 @@ export default function AttendancePanel({
       {loadError && <p className="form-error" style={{ marginBottom: '0.75rem' }}>{loadError}</p>}
 
       <div className="attendance-actions">
-        <button className="btn btn-secondary" onClick={onMarkAllPresent}>✅ Mark all present</button>
-        <button className="btn btn-ghost"      onClick={onClearAll}>⚪ Clear all</button>
+        <button className="btn btn-secondary" onClick={onMarkAllPresent}>Mark all present</button>
+        <button className="btn btn-ghost"     onClick={onClearAll}>Clear all</button>
       </div>
 
       {roster.length === 0 ? (
@@ -89,15 +89,22 @@ export default function AttendancePanel({
               {students.map(student => {
                 const present = attendance.get(student.id) ?? false
                 return (
-                  <button
+                  <div
                     key={student.id}
                     className={`chip ${present ? 'chip-present' : 'chip-absent'}`}
-                    title={present ? 'Mark absent' : 'Mark present'}
-                    onClick={() => onToggle(student.id)}
+                    style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', cursor: 'default' }}
                   >
                     <span className="chip-status">{present ? '✅' : '⚪'}</span>
-                    {student.name}
-                  </button>
+                    <span style={{ flex: 1 }}>{student.name}</span>
+                    <button
+                      className="btn btn-ghost"
+                      style={{ fontSize: '0.65rem', padding: '1px 5px', lineHeight: 1.4, marginLeft: '0.15rem' }}
+                      title={present ? 'Override: mark absent' : 'Override: mark present'}
+                      onClick={() => onOverride(student.id, !present)}
+                    >
+                      {present ? 'Absent' : 'Present'}
+                    </button>
+                  </div>
                 )
               })}
             </div>

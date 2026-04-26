@@ -61,6 +61,9 @@ CREATE TABLE grades (
   created_at  TIMESTAMP DEFAULT NOW()
 );
 
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS allowed_ip_range VARCHAR(50);
+ALTER TABLE classes  ADD COLUMN IF NOT EXISTS allowed_ip_range VARCHAR(50);
+
 CREATE TABLE instructors (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   first_name      VARCHAR(50) NOT NULL,

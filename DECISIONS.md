@@ -155,4 +155,19 @@
 
 **AI suggested?** Human-decided (Option B), AI designed implementation
 
-**Outcome:** Pending
+**Outcome:** Implemented
+
+---
+
+## D-014 · IP range check for student self-check-in
+
+**Status:** Accepted
+**Date:** 2026-04-26
+
+**Context:** Attendance integrity requires that students check in from the physical classroom, not remotely. Client-side network detection is trivially spoofed.
+
+**Decision:** When `allowed_ip_range` is set on the session, the server checks the student's IP against the configured CIDR block using `cidr-matcher`. The IP is read from `x-forwarded-for` (first hop, for deployments behind a proxy) with fallback to `req.socket.remoteAddress`. IPv4-mapped IPv6 prefixes (`::ffff:`) are stripped before matching. If the CIDR is malformed, the check is skipped (fail-open) rather than blocking everyone.
+
+**AI suggested?** AI-suggested, human approved
+
+**Consequences:** Instructors must configure the classroom CIDR in Settings. The fail-open behavior on malformed CIDR avoids accidental lockouts. Students on VPNs or mobile data will be blocked if a range is set — this is the intended behavior.

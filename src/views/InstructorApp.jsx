@@ -49,18 +49,25 @@ export default function InstructorApp() {
   const [attendance, setAttendance] = useState(new Map())  // Map<studentId, boolean>
   const [attendLoadError, setAttendLoadError] = useState('')
 
-  // Load attendance from API when session opens
+  // Load attendance from API when session opens; then poll every 15s
   useEffect(() => {
     if (!sessionId) return
-    apiFetch(`/attendance/${sessionId}`)
-      .then(rows => {
-        setAttendance(prev => {
-          const next = new Map(prev)
-          for (const row of rows) next.set(row.student_id, Boolean(row.present))
-          return next
+
+    function fetchAttendance() {
+      apiFetch(`/attendance/${sessionId}`)
+        .then(rows => {
+          setAttendance(prev => {
+            const next = new Map(prev)
+            for (const row of rows) next.set(row.student_id, Boolean(row.present))
+            return next
+          })
         })
-      })
-      .catch(e => setAttendLoadError(e.message))
+        .catch(e => setAttendLoadError(e.message))
+    }
+
+    fetchAttendance()
+    const id = setInterval(fetchAttendance, 15_000)
+    return () => clearInterval(id)
   }, [sessionId])
 
   // Derive absentIds from attendance Map — stable reference via useMemo
@@ -84,12 +91,11 @@ export default function InstructorApp() {
   }, [state.roster])
 
   // ── Attendance actions ─────────────────────────────────────────────────────
-  const handleToggle = useCallback((studentId) => {
+  const handleOverride = useCallback((studentId, present) => {
     setAttendance(prev => {
       const next = new Map(prev)
-      const nowPresent = !prev.get(studentId)
-      next.set(studentId, nowPresent)
-      if (sessionId) patchAttendance(sessionId, studentId, nowPresent)
+      next.set(studentId, present)
+      if (sessionId) patchAttendance(sessionId, studentId, present)
       return next
     })
   }, [sessionId])
@@ -180,7 +186,7 @@ export default function InstructorApp() {
             attendWindowMinutes={selectedClass?.attend_window_minutes}
             attendance={attendance}
             loadError={attendLoadError}
-            onToggle={handleToggle}
+            onOverride={handleOverride}
             onMarkAllPresent={handleMarkAllPresent}
             onClearAll={handleClearAll}
           />
@@ -189,7 +195,7 @@ export default function InstructorApp() {
         {tab === 'call'        && <CallPanel       {...state} instructorMode={true} absentIds={absentIds} />}
         {tab === 'grade'       && <GradePanel      {...state} />}
         {tab === 'leaderboard' && <Leaderboard     {...state} instructorMode={true} />}
-        {tab === 'settings'    && <SettingsPanel   {...state} />}
+        {tab === 'settings'    && <SettingsPanel   {...state} classId={classId} />}
       </main>
     </div>
   )

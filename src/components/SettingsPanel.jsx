@@ -1,13 +1,38 @@
 /**
- * SettingsPanel — pool mode toggle + data management (FR-06, FR-08).
+ * SettingsPanel — pool mode toggle, data management, classroom IP range (FR-06, FR-08).
  */
 
+import { useState } from 'react'
+import { apiFetch } from '../utils/apiClient'
+
 export default function SettingsPanel({
-  roster, history, settings,
+  roster, history, settings, classId,
   resetPool, setPoolMode, clearAll, clearGrades,
 }) {
+  const [ipRange,    setIpRange]    = useState('')
+  const [ipSaving,   setIpSaving]   = useState(false)
+  const [ipSaved,    setIpSaved]    = useState(false)
+  const [ipError,    setIpError]    = useState('')
+
   function confirmClear(label, action) {
     if (window.confirm(`Clear ${label}? This cannot be undone.`)) action()
+  }
+
+  async function saveIpRange() {
+    if (!classId) return
+    setIpSaving(true); setIpError(''); setIpSaved(false)
+    try {
+      await apiFetch(`/classes/${classId}/settings`, {
+        method: 'PATCH',
+        body: JSON.stringify({ allowed_ip_range: ipRange.trim() || null }),
+      })
+      setIpSaved(true)
+      setTimeout(() => setIpSaved(false), 3000)
+    } catch (e) {
+      setIpError(e.message)
+    } finally {
+      setIpSaving(false)
+    }
   }
 
   return (
@@ -53,6 +78,34 @@ export default function SettingsPanel({
           <button className="btn btn-secondary" onClick={resetPool}>
             Reset pool
           </button>
+        </section>
+      )}
+
+      {/* Classroom IP range */}
+      {classId && (
+        <section className="settings-section">
+          <h3 className="section-title">Allowed IP range (CIDR)</h3>
+          <p className="section-desc">
+            Students must be on this network to self-check-in. Leave blank to allow
+            check-in from any network.
+          </p>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <input
+              className="text-input"
+              style={{ maxWidth: 220 }}
+              placeholder="192.168.1.0/24"
+              value={ipRange}
+              onChange={e => setIpRange(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && saveIpRange()}
+            />
+            <button className="btn btn-secondary" disabled={ipSaving} onClick={saveIpRange}>
+              {ipSaving ? 'Saving…' : ipSaved ? '✓ Saved' : 'Save'}
+            </button>
+          </div>
+          {ipError && <p className="form-error" style={{ marginTop: '0.4rem' }}>{ipError}</p>}
+          <p className="panel-sub" style={{ marginTop: '0.4rem' }}>
+            Applied to new sessions. Existing session is not affected.
+          </p>
         </section>
       )}
 

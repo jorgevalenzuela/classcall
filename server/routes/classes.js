@@ -79,16 +79,17 @@ router.post('/:id/roster', async (req, res) => {
   res.status(201).json({ imported: inserted.length, students: inserted })
 })
 
-/** PATCH /api/classes/:id/settings — { attend_window_minutes, lockout_time } */
+/** PATCH /api/classes/:id/settings — { attend_window_minutes, lockout_time, allowed_ip_range } */
 router.patch('/:id/settings', async (req, res) => {
-  const { attend_window_minutes, lockout_time } = req.body
+  const { attend_window_minutes, lockout_time, allowed_ip_range } = req.body
   const { rows } = await pool.query(
     `UPDATE classes
      SET attend_window_minutes = COALESCE($1, attend_window_minutes),
-         lockout_time          = COALESCE($2, lockout_time)
-     WHERE id = $3
+         lockout_time          = COALESCE($2, lockout_time),
+         allowed_ip_range      = $3
+     WHERE id = $4
      RETURNING *`,
-    [attend_window_minutes ?? null, lockout_time ?? null, req.params.id]
+    [attend_window_minutes ?? null, lockout_time ?? null, allowed_ip_range ?? null, req.params.id]
   )
   if (rows.length === 0) return res.status(404).json({ error: 'Class not found' })
   res.json(rows[0])

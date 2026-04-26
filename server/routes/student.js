@@ -2,6 +2,7 @@ import { Router } from 'express'
 import pool from '../db/connection.js'
 import { requireAuth } from '../middleware/auth.js'
 import { ferpaStrip } from '../middleware/ferpa.js'
+import CidrMatcher from 'cidr-matcher'
 
 const router = Router()
 
@@ -97,16 +98,32 @@ router.get('/progress', studentOnly, ferpaStrip, async (req, res) => {
 })
 
 /**
+ * GET /api/student/session
+ * Returns the current open session for the student's class, or null if none.
+ */
+router.get('/session', studentOnly, async (req, res) => {
+  const { rows } = await pool.query(
+    `SELECT s.id, s.opened_at, s.allowed_ip_range, c.attend_window_minutes
+     FROM sessions s
+     JOIN students st ON st.class_id = s.class_id
+     WHERE st.id = $1 AND s.closed_at IS NULL
+     ORDER BY s.opened_at DESC
+     LIMIT 1`,
+    [req.user.sub]
+  )
+  res.json(rows[0] ?? null)
+})
+
+/**
  * POST /api/student/checkin — { session_id }
- * Valid only within the attendance window (opened_at + attend_window_minutes).
+ * Enforces: time window and, if configured, CIDR IP range.
  */
 router.post('/checkin', studentOnly, async (req, res) => {
   const { session_id } = req.body
   if (!session_id) return res.status(400).json({ error: 'session_id is required' })
 
-  // Verify session is open and within window
   const { rows: sessionRows } = await pool.query(
-    `SELECT s.id, s.opened_at, s.closed_at, c.attend_window_minutes
+    `SELECT s.id, s.opened_at, s.closed_at, s.allowed_ip_range, c.attend_window_minutes
      FROM sessions s
      JOIN classes c ON c.id = s.class_id
      WHERE s.id = $1`,
@@ -119,8 +136,27 @@ router.post('/checkin', studentOnly, async (req, res) => {
   if (!session.opened_at) return res.status(400).json({ error: 'Session not yet open' })
   if (session.closed_at)  return res.status(400).json({ error: 'Session is closed' })
 
+  // Time window check
   const windowEnd = new Date(session.opened_at.getTime() + session.attend_window_minutes * 60 * 1000)
-  if (new Date() > windowEnd) return res.status(400).json({ error: 'Attendance window has closed' })
+  if (new Date() > windowEnd) {
+    return res.status(403).json({ error: 'Attendance window has closed' })
+  }
+
+  // IP range check (skip if no range configured)
+  if (session.allowed_ip_range) {
+    const studentIp = (req.headers['x-forwarded-for'] ?? '').split(',')[0].trim()
+      || req.socket.remoteAddress
+      || ''
+    const cleanIp = studentIp.replace(/^::ffff:/, '') // strip IPv4-mapped IPv6 prefix
+    try {
+      const matcher = new CidrMatcher([session.allowed_ip_range])
+      if (!matcher.contains(cleanIp)) {
+        return res.status(403).json({ error: 'You must be on the classroom network to check in' })
+      }
+    } catch {
+      // Malformed CIDR — skip the check rather than blocking everyone
+    }
+  }
 
   const { rows } = await pool.query(
     `INSERT INTO attendance (session_id, student_id, present, checked_in_at)
