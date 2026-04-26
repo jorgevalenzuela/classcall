@@ -106,6 +106,7 @@ router.get('/session', studentOnly, async (req, res) => {
     `SELECT s.id, s.opened_at, s.allowed_ip_range, c.attend_window_minutes
      FROM sessions s
      JOIN students st ON st.class_id = s.class_id
+     JOIN classes c  ON c.id = s.class_id
      WHERE st.id = $1 AND s.closed_at IS NULL
      ORDER BY s.opened_at DESC
      LIMIT 1`,
